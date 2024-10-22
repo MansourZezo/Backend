@@ -192,3 +192,13 @@ exports.getUserInfo = catchAsync(async (req, res, next) => {
         },
     });
 });
+
+
+//دالة التحقق من الاتصال بالسيرفر
+exports.checkServerStatus = (req, res) => {
+    res.status(200).json({
+      status: 'success',
+      message: 'Server is healthy',
+    });
+  };
+  
