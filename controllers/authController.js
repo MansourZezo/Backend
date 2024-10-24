@@ -8,7 +8,7 @@ const { createSendToken } = require('../utils/jwt');
 // دالة التسجيل
 exports.signUp = catchAsync(async (req, res, next) => {
     console.log('Step 1: Started sign-up process');
-    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+    console.log('Request Body:', JSON.stringify(req.body, null, 2)); // طباعة جميع البيانات المرسلة
 
     const filters = [];
     if (req.body.email) {
@@ -18,20 +18,18 @@ exports.signUp = catchAsync(async (req, res, next) => {
         filters.push({ phoneNumber: req.body.phoneNumber });
     }
 
-    // تحقق إذا كان المستخدم مسجل مسبقًا
     if (filters.length > 0) {
         try {
             const existingUser = await User.findOne({ $or: filters });
             if (existingUser) {
                 const conflictField = existingUser.email === req.body.email ? 'Email' : 'Phone number';
-                console.error(`User registration conflict: ${conflictField} is already registered.`);
                 return res.status(400).json({ 
                     status: 'fail',
                     message: `${conflictField} is already registered.`,
                 });
             }
         } catch (error) {
-            console.error('Error during user existence check:', error);
+            console.log('Error during user existence check:', error); // طباعة الخطأ
             return res.status(500).json({
                 status: 'error',
                 message: 'Error during user existence check: ' + error.message,
@@ -39,16 +37,13 @@ exports.signUp = catchAsync(async (req, res, next) => {
         }
     }
 
-    // تحقق من وجود الدور (role)
     if (!req.body.role) {
-        console.error('User role is missing in request.');
         return res.status(400).json({
             status: 'fail',
             message: 'Role is required',
         });
     }
 
-    // إنشاء المستخدم الجديد
     let newUser;
     try {
         newUser = await User.create({
@@ -58,22 +53,26 @@ exports.signUp = catchAsync(async (req, res, next) => {
             password: req.body.password,
             role: req.body.role,
         });
+        console.log('New user created successfully:', newUser); // طباعة معلومات المستخدم الجديد
     } catch (error) {
-        console.error('Error creating user:', error);
+        console.log('Error creating user:', error); // طباعة الخطأ
         return res.status(500).json({
             status: 'error',
             message: 'Error creating user: ' + error.message,
         });
     }
 
+    // طباعة مسارات الملفات قبل الإنشاء
     const profilePictureUrl = req.body.profileImage || '';
-    console.log('Profile Picture URL:', profilePictureUrl);
-
     const identityProofUrl = req.body.identityProof || '';
     const drivingLicenseUrl = req.body.drivingLicense || '';
     const medicalCertificateUrl = req.body.medicalCertificate || '';
 
-    // إنشاء الملف الشخصي
+    console.log('Profile image URL:', profilePictureUrl);
+    console.log('Identity proof URL:', identityProofUrl);
+    console.log('Driving license URL:', drivingLicenseUrl);
+    console.log('Medical certificate URL:', medicalCertificateUrl);
+
     let newProfile;
     try {
         newProfile = await Profile.create({
@@ -85,30 +84,31 @@ exports.signUp = catchAsync(async (req, res, next) => {
             drivingLicense: drivingLicenseUrl,
             medicalCertificate: medicalCertificateUrl,
         });
-        console.log('Profile created successfully:', newProfile);
+        console.log('New profile created successfully:', newProfile); // طباعة معلومات الملف الشخصي الجديد
     } catch (error) {
-        console.error('Error creating profile:', error);
+        console.log('Error creating profile:', error); // طباعة الخطأ
         return res.status(500).json({
             status: 'error',
             message: 'Error creating profile: ' + error.message,
         });
     }
 
-    // ربط الملف الشخصي بالمستخدم
     try {
         newUser.profile = newProfile._id;
         await newUser.save();
-        console.log('User and profile linked successfully.');
+        console.log('Profile linked to user successfully'); // طباعة ربط الملف الشخصي بالمستخدم
     } catch (error) {
-        console.error('Error linking profile to user:', error);
+        console.log('Error linking profile to user:', error); // طباعة الخطأ
         return res.status(500).json({
             status: 'error',
             message: 'Error linking profile to user: ' + error.message,
         });
     }
 
-    // إرسال التوكن مع رد النجاح
-    createSendToken(newUser, 201, res);
+    // إرسال التوكن مع إرجاع profileId
+    createSendToken(newUser, 201, res, {
+        profileId: newProfile._id, // إرجاع profileId في الرد
+    });
 });
 
 // دالة تسجيل الدخول
